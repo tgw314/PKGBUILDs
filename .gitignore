@@ -1,4 +1,6 @@
-*
-!.gitignore
-!*/
-!*/PKGBUILD
+*/*/
+**/*.tgz
+**/*.tar.gz
+**/*.zip
+**/*.tar.zst
+.SRCINFO
