@@ -1,0 +1,20 @@
+# Maintainer: Koki Tagawa <me@k0k1.dev>
+pkgname=atcoder-cli
+pkgver=2.2.0
+pkgrel=1
+arch=('any')
+url="https://github.com/Tatamo/atcoder-cli"
+license=('BSD-3-Clause')
+makedepends=('npm')
+optdepends=()
+source=("https://registry.npmjs.org/${pkgname}/-/${pkgname}-${pkgver}.tgz")
+noextract=("${pkgname}-${pkgver}.tgz")
+sha256sums=('b2378d7aa55f464e5e2b96ef20ccb9e0ed3fdaefc07af77cb9ada7b9b4a94ff8')
+
+package() {
+	npm install -g --prefix "${pkgdir}/usr" "${srcdir}/${pkgname}-${pkgver}.tgz"
+
+    # npm gives ownership of ALL FILES to build user
+    # https://bugs.archlinux.org/task/63396
+    chown -R root:root "${pkgdir}"
+}
