@@ -1,0 +1,38 @@
+# Maintainer : Koki Tagawa <me@k0k1.dev>
+# Contributor : Zak BlueSwordM <neutronpcxt@gmail.com>
+
+pkgname=svt-av1-psyex-git
+_pkgname=svt-av1-psyex
+pkgver=2.0.0.rc2.r2.gc233913e
+pkgrel=1
+pkgdesc='An exotic, extended, exciting continuation of SVT-AV1-PSY'
+arch=('x86_64')
+url='https://github.com/BlueSwordM/svt-av1-psyex'
+license=('BSD-3-Clause-Clear' 'custom: Alliance for Open Media Patent License 1.0')
+depends=('glibc')
+makedepends=('git' 'cmake' 'yasm')
+provides=('svt-av1' 'svt-av1-git')
+conflicts=('svt-av1' 'svt-av1-git')
+source=("git+https://github.com/BlueSwordM/${_pkgname}.git")
+sha256sums=('SKIP')
+
+pkgver() {
+    git -C ${_pkgname} describe --long --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g;s/^v//'
+}
+
+build() {
+    export LDFLAGS+=' -Wl,-z,noexecstack'
+    cmake -B build -S ${_pkgname} \
+        -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_INSTALL_PREFIX=/usr \
+        -DENABLE_AVX512=ON \
+        -DNATIVE=ON \
+        -DBUILD_SHARED_LIBS=ON \
+        -DSVT_AV1_LTO=ON 
+    make -C build
+}
+
+package() {
+    make -C build DESTDIR="$pkgdir" install
+    install -D -m644 ${_pkgname}/{LICENSE,PATENTS}.md -t "${pkgdir}/usr/share/licenses/${pkgname}"
+}

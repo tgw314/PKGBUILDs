@@ -1,4 +1,4 @@
-# Maintainer: Koki Tagawa <me@k0k1.dev>
+# Maintainer : Koki Tagawa <me@k0k1.dev>
 pkgname=atcoder-cli
 pkgver=2.2.0
 pkgrel=1

@@ -1,5 +1,5 @@
-# Maintainer: Koki Tagawa <me@k0k1.dev>
-# Contributor: Tatsumi Gamou <tatsumigamou at protonmail dot com>
+# Maintainer : Koki Tagawa <me@k0k1.dev>
+# Contributor : Tatsumi Gamou <tatsumigamou at protonmail dot com>
 #
 # Based on https://github.com/gamoutatsumi/xremap-x11-bin
 pkgname=xremap-x11-bin
