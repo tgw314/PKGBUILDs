@@ -3,7 +3,7 @@
 
 pkgname=svt-av1-psyex-git
 _pkgname=svt-av1-psyex
-pkgver=2.0.0.rc2.r2.gc233913e
+pkgver=3.0.2.A.r1.gd1dbfba2
 pkgrel=1
 pkgdesc='An exotic, extended, exciting continuation of SVT-AV1-PSY'
 arch=('x86_64')
@@ -28,7 +28,7 @@ build() {
         -DENABLE_AVX512=ON \
         -DNATIVE=ON \
         -DBUILD_SHARED_LIBS=ON \
-        -DSVT_AV1_LTO=ON 
+        -DSVT_AV1_LTO=ON
     make -C build
 }
 
