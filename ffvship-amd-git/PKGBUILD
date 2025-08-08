@@ -6,16 +6,22 @@ pkgdesc="Cli tool for computing the metric difference between two videos (GIT ve
 arch=('x86_64')
 url='https://github.com/Line-fr/Vship'
 license=('MIT')
-depends=('hip-runtime-amd')
-makedepends=('git' 'make' 'clang')
+depends=()
+makedepends=('git' 'make' 'clang' 'hip-runtime-amd')
 provides=("${_plug}")
 conflicts=("${_plug}")
 source=("${_plug}::git+https://github.com/Line-fr/Vship.git")
 sha256sums=('SKIP')
 
+prepare() {
+  export PATH="/opt/rocm/bin:/opt/rocm/lib/llvm/bin:${PATH}"
+  export CPPFLAGS="-I/opt/rocm/include ${CPPFLAGS:-}"
+  export LDFLAGS="-L/opt/rocm/lib ${LDFLAGS:-}"
+  export LD_LIBRARY_PATH="/opt/rocm/lib:${LD_LIBRARY_PATH:-}"
+}
+
 build() {
-  cd "${_plug}"
-  export PATH="/opt/rocm/bin:${PATH}"
+  cd "${srcdir}/${_plug}"
   make buildFFVSHIPall
 }
 
@@ -26,7 +32,6 @@ pkgver() {
 }
 
 package(){
-  cd "${_plug}"
-  export PATH="/opt/rocm/bin:${PATH}"
+  cd "${srcdir}/${_plug}"
   make PREFIX="/usr" DESTDIR="${pkgdir}" install
 }
