@@ -17,9 +17,6 @@ build() {
   cd "${srcdir}/${_plug}"
 
   export PATH="/opt/rocm/bin:/opt/rocm/lib/llvm/bin:${PATH}"
-  # export CPPFLAGS="-I/opt/rocm/include ${CPPFLAGS:-}"
-  # export LDFLAGS="-L/opt/rocm/lib ${LDFLAGS:-}"
-  # export LD_LIBRARY_PATH="/opt/rocm/lib:${LD_LIBRARY_PATH:-}"
   export HIP_PATH=/opt/rocm
 
   make buildFFVSHIPall
