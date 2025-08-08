@@ -13,15 +13,14 @@ conflicts=("${_plug}")
 source=("${_plug}::git+https://github.com/Line-fr/Vship.git")
 sha256sums=('SKIP')
 
-prepare() {
+build() {
+  cd "${srcdir}/${_plug}"
+
   export PATH="/opt/rocm/bin:/opt/rocm/lib/llvm/bin:${PATH}"
   export CPPFLAGS="-I/opt/rocm/include ${CPPFLAGS:-}"
   export LDFLAGS="-L/opt/rocm/lib ${LDFLAGS:-}"
   export LD_LIBRARY_PATH="/opt/rocm/lib:${LD_LIBRARY_PATH:-}"
-}
 
-build() {
-  cd "${srcdir}/${_plug}"
   make buildFFVSHIPall
 }
 
