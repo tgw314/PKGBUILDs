@@ -17,12 +17,12 @@ build() {
   cd "${srcdir}/${_plug}"
 
   export PATH="/opt/rocm/bin:/opt/rocm/lib/llvm/bin:${PATH}"
-  export LDFLAGS="-L/opt/rocm/lib ${LDFLAGS:-}"
-  export LD_LIBRARY_PATH="/opt/rocm/lib:${LD_LIBRARY_PATH:-}"
+  # export CPPFLAGS="-I/opt/rocm/include ${CPPFLAGS:-}"
+  # export LDFLAGS="-L/opt/rocm/lib ${LDFLAGS:-}"
+  # export LD_LIBRARY_PATH="/opt/rocm/lib:${LD_LIBRARY_PATH:-}"
+  export HIP_PATH=/opt/rocm
 
-  make buildFFVSHIPall \
-      CXXFLAGS="-I/opt/rocm/include" \
-      LDFLAGS="-L/opt/rocm/lib"
+  make buildFFVSHIPall
 }
 
 pkgver() {
