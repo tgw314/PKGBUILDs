@@ -19,7 +19,7 @@ build() {
   export PATH="/opt/rocm/bin:/opt/rocm/lib/llvm/bin:${PATH}"
   export HIP_PATH=/opt/rocm
 
-  make buildFFVSHIPall
+  make buildFFVSHIP
 }
 
 pkgver() {
