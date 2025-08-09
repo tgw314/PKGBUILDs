@@ -1,13 +1,13 @@
 _plug=ffvship-amd
 pkgname=${_plug}-git
-pkgrel=1
+pkgrel=2
 pkgver=3.0.0.13.g1ed2fb3
 pkgdesc="Cli tool for computing the metric difference between two videos (GIT version)"
 arch=('x86_64')
 url='https://github.com/Line-fr/Vship'
 license=('MIT')
-depends=('libzimg.so' 'libffms2.so' 'hip-runtime-amd')
-makedepends=('git' 'make' 'clang' 'hip-runtime-amd')
+depends=('ffms2' 'hip-runtime-amd')
+makedepends=('git' 'hip-runtime-amd')
 provides=("${_plug}")
 conflicts=("${_plug}")
 source=("${_plug}::git+https://github.com/Line-fr/Vship.git")
