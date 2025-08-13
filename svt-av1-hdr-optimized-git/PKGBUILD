@@ -29,8 +29,7 @@ pkgver() {
 }
 
 prepare() {
-  # Create separate source directories for shared and static builds to prevent conflicts
-  cp -r "${srcdir}/${_pkgname}" "${srcdir}/${_pkgname}-shared"
+  # Create separate source directory for static builds to prevent conflicts
   cp -r "${srcdir}/${_pkgname}" "${srcdir}/${_pkgname}-static"
 }
 
@@ -41,6 +40,7 @@ build() {
   local _cmake_common_args=(
     -DCMAKE_INSTALL_PREFIX=/usr
     -DCMAKE_BUILD_TYPE=Release
+    -DNATIVE=ON
     -DCMAKE_C_COMPILER=clang
     -DCMAKE_CXX_COMPILER=clang++
     -DCMAKE_AR=llvm-ar
@@ -54,7 +54,7 @@ build() {
   )
 
   # --- Stage 1: Build Shared Library (for ffmpeg) ---
-  cd "${srcdir}/${_pkgname}-shared"
+  cd "${srcdir}/${_pkgname}"
   cmake -B build -S . \
     -DBUILD_SHARED_LIBS=ON \
     "${_cmake_common_args[@]}"
@@ -71,7 +71,7 @@ build() {
 package() {
   # 1. Install the shared library, headers, and pkg-config files from the shared build.
   # This also installs a dynamically linked SvtAv1EncApp, which we will replace.
-  make -C "${srcdir}/${_pkgname}-shared/build" DESTDIR="${pkgdir}" install
+  make -C "${srcdir}/${_pkgname}/build" DESTDIR="${pkgdir}" install
 
   # 2. Replace the dynamically linked SvtAv1EncApp with the statically linked version.
   install -Dm755 "${srcdir}/${_pkgname}-static/Bin/Release/SvtAv1EncApp" "${pkgdir}/usr/bin/SvtAv1EncApp"
