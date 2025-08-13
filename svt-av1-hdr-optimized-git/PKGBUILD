@@ -65,7 +65,7 @@ build() {
   cmake -B build -S . \
     -DBUILD_SHARED_LIBS=OFF \
     "${_cmake_common_args[@]}"
-  make -C build SvtAv1EncApp
+  make -C build
 }
 
 package() {
