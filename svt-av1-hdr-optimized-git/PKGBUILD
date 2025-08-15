@@ -7,14 +7,14 @@
 
 pkgname=svt-av1-hdr-optimized-git
 _pkgname=svt-av1-hdr
-pkgver=3.1.0.r4480.g8d67acb5
+pkgver=3.1.0.r4486.gbd24e160
 pkgrel=1
 pkgdesc='SVT-AV1 Encoder with perceptual enhancements (shared lib + static app), optimized with Clang + O3 + ThinLTO'
 arch=('x86_64')
 url='https://github.com/juliobbv-p/svt-av1-hdr'
 license=('BSD-3-Clause-Clear' 'custom: Alliance for Open Media Patent License 1.0')
 depends=('glibc')
-makedepends=('git' 'cmake' 'yasm' 'clang' 'lld' 'llvm')
+makedepends=('git' 'cmake' 'yasm' 'clang' 'mold' 'llvm')
 provides=('svt-av1' 'svt-av1-git')
 conflicts=('svt-av1' 'svt-av1-git' 'svt-av1-hdr-git')
 source=("git+https://github.com/juliobbv-p/${_pkgname}.git")
@@ -28,24 +28,17 @@ pkgver() {
     "$(git rev-parse --short HEAD)"
 }
 
-prepare() {
-  # Create separate source directory for static builds to prevent conflicts
-  cp -r "${srcdir}/${_pkgname}" "${srcdir}/${_pkgname}-static"
-}
-
 build() {
   # Common compiler and linker flags for Clang with optimizations
-  local _cflags="-O3 -ffast-math -flto=thin"
-  local _ldflags="-flto=thin -fuse-ld=lld"
+  local _cflags="${CFLAGS} -O3 -ffast-math -flto=thin -ffunction-sections -fdata-sections"
+  local _ldflags="${LDFLAGS} -flto=thin -fuse-ld=mold -Wl,--gc-sections -Wl,--as-needed -Wl,--icf=all"
   local _cmake_common_args=(
     -DCMAKE_INSTALL_PREFIX=/usr
     -DCMAKE_BUILD_TYPE=Release
     -DNATIVE=ON
+    -DSVT_AV1_LTO=OFF
     -DCMAKE_C_COMPILER=clang
     -DCMAKE_CXX_COMPILER=clang++
-    -DCMAKE_AR=llvm-ar
-    -DCMAKE_NM=llvm-nm
-    -DCMAKE_RANLIB=llvm-ranlib
     -DCMAKE_C_FLAGS="${_cflags}"
     -DCMAKE_CXX_FLAGS="${_cflags}"
     -DCMAKE_EXE_LINKER_FLAGS="${_ldflags}"
@@ -55,24 +48,23 @@ build() {
 
   # --- Stage 1: Build Shared Library (for ffmpeg) ---
   cd "${srcdir}/${_pkgname}"
-  cmake -B build -S . \
+  cmake -B build-shared -S . \
     -DBUILD_SHARED_LIBS=ON \
     "${_cmake_common_args[@]}"
-  make -C build
+  make -C build-shared
 
   # --- Stage 2: Build Static Executable (SvtAv1EncApp) ---
-  cd "${srcdir}/${_pkgname}-static"
-  cmake -B build -S . \
+  cmake -B build-static -S . \
     -DBUILD_SHARED_LIBS=OFF \
     "${_cmake_common_args[@]}"
-  make -C build
+  make -C build-static
 }
 
 package() {
-  # 1. Install the shared library, headers, and pkg-config files from the shared build.
-  # This also installs a dynamically linked SvtAv1EncApp, which we will replace.
-  make -C "${srcdir}/${_pkgname}/build" DESTDIR="${pkgdir}" install
+  # Installs the shared library AND the static SvtAv1EncApp, which has already
+  # replaced the dynamic version in the build output directory.
+  make -C "${srcdir}/${_pkgname}/build-shared" DESTDIR="${pkgdir}" install
 
-  # 2. Replace the dynamically linked SvtAv1EncApp with the statically linked version.
-  install -Dm755 "${srcdir}/${_pkgname}-static/Bin/Release/SvtAv1EncApp" "${pkgdir}/usr/bin/SvtAv1EncApp"
+  # Install license files
+  install -Dm644 "${_pkgname}"/{LICENSE,PATENTS}.md -t "${pkgdir}/usr/share/licenses/${pkgname}"
 }
