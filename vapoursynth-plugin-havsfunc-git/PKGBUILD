@@ -59,6 +59,11 @@ pkgver() {
   echo "$(git describe --long --tags | tr - . | tr -d r)"
 }
 
+prepare() {
+  cd "${_plug}"
+  sed -i 's/BM3D/bm3d/g' havsfunc/havsfunc.py
+}
+
 build() {
   cd "${_plug}"
   python -m build --wheel --no-isolation
