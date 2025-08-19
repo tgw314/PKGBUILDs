@@ -14,8 +14,8 @@ depends=(
     'python-jetpytools'
     'python-typing_extensions'
     'python-scipy'
-    'vapoursynth-plugin-vsakarin'
-    'vapoursynth-plugin-resize2'
+    'vapoursynth-plugin-vsakarin-git'
+    'vapoursynth-plugin-resize2-git'
 )
 makedepends=(python-build python-installer python-wheel python-hatchling)
 optdepends=(
