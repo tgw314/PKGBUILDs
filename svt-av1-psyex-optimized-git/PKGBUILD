@@ -1,31 +1,27 @@
 # Maintainer : Koki Tagawa <me@k0k1.dev>
 # Contributor : Zak BlueSwordM <neutronpcxt@gmail.com>
 #
-# Modified PKGBUILD using juliobbv-p/svt-av1-hdr fork.
+# Modified PKGBUILD using BlueSwordM/svt-av1-psyex fork.
 # Builds libsvtav1 as a shared library for ffmpeg and SvtAv1EncApp as a static executable.
 # Optimized with Clang, -O3, and ThinLTO.
 
-pkgname=svt-av1-hdr-optimized-git
-_pkgname=svt-av1-hdr
-pkgver=3.1.0.r4494.g3b7097c3
+pkgname=svt-av1-psyex-optimized-git
+_pkgname=svt-av1-psyex
+pkgver=3.0.2.A.r1.gd1dbfba2
 pkgrel=1
 pkgdesc='SVT-AV1 Encoder with perceptual enhancements (shared lib + static app), optimized with Clang + O3 + ThinLTO'
 arch=('x86_64')
-url='https://github.com/juliobbv-p/svt-av1-hdr'
+url='https://github.com/BlueSwordM/svt-av1-psyex'
 license=('BSD-3-Clause-Clear' 'custom: Alliance for Open Media Patent License 1.0')
 depends=('glibc')
 makedepends=('git' 'cmake' 'yasm' 'clang' 'mold' 'llvm')
 provides=('svt-av1' 'svt-av1-git')
-conflicts=('svt-av1' 'svt-av1-git' 'svt-av1-hdr-git')
-source=("git+https://github.com/juliobbv-p/${_pkgname}.git")
+conflicts=('svt-av1' 'svt-av1-git' 'svt-av1-psyex-git')
+source=("git+https://github.com/BlueSwordM/${_pkgname}.git")
 sha256sums=('SKIP')
 
 pkgver() {
-  cd "${srcdir}/${_pkgname}"
-  printf "%s.r%s.g%s" \
-    "$(grep -m 1 'project(svt-av1 VERSION' CMakeLists.txt | sed -n 's/.*VERSION \([0-9.]*\).*/\1/p')" \
-    "$(git rev-list --count HEAD)" \
-    "$(git rev-parse --short HEAD)"
+    git -C ${_pkgname} describe --long --tags | sed 's/\([^-]*-g\)/r\1/;s/-/./g;s/^v//'
 }
 
 build() {
@@ -34,8 +30,7 @@ build() {
   # Common compiler and linker flags for Clang with optimizations
   local _cflags="${CFLAGS/-Wp,-D_FORTIFY_SOURCE=3/} ${_commonflags}"
   local _cxxflags="${CXXFLAGS/-Wp,-D_FORTIFY_SOURCE=3/} ${_commonflags}"
-
-  local _ldflags="${LDFLAGS} -flto=thin -fuse-ld=mold -Wl,--gc-sections -Wl,--as-needed -Wl,--icf=all"
+  local _ldflags="${LDFLAGS} -flto=thin -fuse-ld=mold -Wl,--gc-sections -Wl,--as-needed -Wl,--icf=all -Wl,-z,noexecstack"
   local _cmake_common_args=(
     -DCMAKE_INSTALL_PREFIX=/usr
     -DCMAKE_BUILD_TYPE=Release
