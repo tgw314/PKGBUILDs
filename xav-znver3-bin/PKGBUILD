@@ -13,7 +13,7 @@ optdepends=("vship: for target quality encoding features")
 provides=("xav")
 conflicts=("xav")
 source=("https://github.com/emrakyz/xav/releases/download/v${pkgver}/xav-v${pkgver}_${microarch}.tar.xz")
-sha256sums=('bc1dbf68a65a33a43625720cc87d971e464773c43560ad6f649d0c6c3e8ad96e')
+sha256sums=('4d3b59457136f6eb4633eb8486bbd02a0f31aa894734979fbd6ee5132413b60e')
 
 package() {
     cd "${srcdir}"
