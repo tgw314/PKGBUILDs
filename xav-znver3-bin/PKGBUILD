@@ -1,6 +1,6 @@
 # Maintainer : Koki Tagawa <me@k0k1.dev>
 
-microarch="znver2"
+microarch="znver3"
 pkgname="xav-${microarch}-bin"
 pkgver="0.1.0"
 pkgrel="1"
