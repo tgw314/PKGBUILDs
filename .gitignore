@@ -1,6 +1,7 @@
 */*/
 **/*.tgz
 **/*.tar.gz
+**/*.tar.xz
 **/*.zip
 **/*.tar.zst
 .SRCINFO
