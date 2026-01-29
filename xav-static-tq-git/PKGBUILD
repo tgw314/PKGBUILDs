@@ -1,0 +1,200 @@
+# Maintainer: Josh Holmer <jholmer.in@gmail.com>
+
+pkgname=xav-static-tq-git
+pkgver=r112.a27f172
+pkgrel=1
+pkgdesc='The Most Efficient Chunked or Target Quality AV1/AV2 Encoding Framework (static build with TQ)'
+arch=('x86_64')
+url='https://github.com/emrakyz/xav'
+license=('MIT')
+makedepends=('git' 'cargo' 'nasm' 'clang' 'llvm' 'meson' 'ninja')
+depends=('svt-av1' 'mkvtoolnix-cli')
+optdepends=('gpac: for VVC muxing and concatenation'
+            'opus-tools: for audio encoding')
+provides=('xav' 'xav-git')
+conflicts=('xav' 'xav-git' 'xav-dynamic-tq-git')
+source=("xav::git+https://github.com/emrakyz/xav.git"
+        "zlib::git+https://github.com/madler/zlib.git"
+        "dav1d::git+https://code.videolan.org/videolan/dav1d.git"
+        "ffmpeg::git+https://github.com/FFmpeg/FFmpeg.git"
+        "ffms2::git+https://github.com/FFMS/ffms2.git")
+sha256sums=('SKIP'
+            'SKIP'
+            'SKIP'
+            'SKIP'
+            'SKIP')
+
+pkgver() {
+    cd "xav"
+    printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+prepare() {
+    # Setup build directories
+    export BUILD_DIR="${srcdir}"
+    
+    # Setup LLVM toolchain
+    export CC="clang"
+    export CXX="clang++"
+    export LD="ld.lld"
+    export AR="llvm-ar"
+    export NM="llvm-nm"
+    export RANLIB="llvm-ranlib"
+    export STRIP="llvm-strip"
+    export OBJCOPY="llvm-objcopy"
+    export OBJDUMP="llvm-objdump"
+    
+    # Configure cargo for static build
+    cd "${srcdir}/xav"
+    cp -f .cargo/config.toml.static .cargo/config.toml
+}
+
+build() {
+    export BUILD_DIR="${srcdir}"
+    
+    # Setup LLVM toolchain
+    export CC="clang"
+    export CXX="clang++"
+    export LD="ld.lld"
+    export AR="llvm-ar"
+    export NM="llvm-nm"
+    export RANLIB="llvm-ranlib"
+    export STRIP="llvm-strip"
+    export OBJCOPY="llvm-objcopy"
+    export OBJDUMP="llvm-objdump"
+    
+    # Common compiler flags
+    export COMMON_FLAGS="-O3 -ffast-math -march=x86-64-v3 -mtune=generic -flto=thin -pipe -fno-math-errno -fomit-frame-pointer -fno-semantic-interposition -fno-stack-protector -fno-stack-clash-protection -fno-sanitize=all -fno-dwarf2-cfi-asm -fstrict-aliasing -fstrict-overflow -fno-zero-initialized-in-bss -static -fno-pic -fno-pie"
+    export CFLAGS="${COMMON_FLAGS}"
+    export CXXFLAGS="${COMMON_FLAGS} -stdlib=libstdc++"
+    export LDFLAGS="-fuse-ld=lld -rtlib=compiler-rt -unwindlib=libunwind -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all -static -fno-pic -fno-pie"
+    
+    # Build zlib
+    cd "${BUILD_DIR}/zlib"
+    ./configure --static --prefix="${BUILD_DIR}/zlib/install"
+    make -j$(nproc)
+    make install
+    
+    # Build dav1d
+    cd "${BUILD_DIR}/dav1d"
+    meson setup build --default-library=static \
+        --buildtype=release \
+        -Denable_tools=false \
+        -Denable_examples=false \
+        -Dbitdepths=8,16 \
+        -Denable_asm=true
+    ninja -C build
+    
+    # Setup dav1d pkg-config
+    mkdir -p "${BUILD_DIR}/dav1d/lib/pkgconfig"
+    sed "s|prefix=/usr/local|prefix=${BUILD_DIR}/dav1d|g" \
+        "${BUILD_DIR}/dav1d/build/meson-private/dav1d.pc" | \
+        sed "s|includedir=\${prefix}/include|includedir=\${prefix}/include|g" | \
+        sed "s|libdir=\${prefix}/lib64|libdir=\${prefix}/build/src|g" | \
+        sed "s|libdir=\${prefix}/lib|libdir=\${prefix}/build/src|g" \
+        > "${BUILD_DIR}/dav1d/lib/pkgconfig/dav1d.pc"
+    
+    # Build FFmpeg
+    export PKG_CONFIG_PATH="${BUILD_DIR}/dav1d/lib/pkgconfig:${BUILD_DIR}/ffmpeg/install/lib/pkgconfig"
+    
+    cd "${BUILD_DIR}/ffmpeg"
+    ./configure \
+        --cc="${CC}" \
+        --cxx="${CXX}" \
+        --ar="${AR}" \
+        --ranlib="${RANLIB}" \
+        --strip="${STRIP}" \
+        --extra-cflags="${CFLAGS}" \
+        --extra-cxxflags="${CXXFLAGS}" \
+        --extra-ldflags="${LDFLAGS}" \
+        --disable-shared \
+        --enable-static \
+        --pkg-config-flags="--static" \
+        --disable-programs \
+        --disable-doc \
+        --disable-htmlpages \
+        --disable-manpages \
+        --disable-podpages \
+        --disable-txtpages \
+        --disable-network \
+        --disable-autodetect \
+        --disable-all \
+        --disable-everything \
+        --enable-avcodec \
+        --enable-avformat \
+        --enable-avutil \
+        --enable-swscale \
+        --enable-swresample \
+        --enable-protocol=file \
+        --enable-demuxer=matroska \
+        --enable-demuxer=mov \
+        --enable-demuxer=mpegts \
+        --enable-demuxer=mpegps \
+        --enable-demuxer=flv \
+        --enable-demuxer=avi \
+        --enable-demuxer=ivf \
+        --enable-demuxer=yuv4mpegpipe \
+        --enable-demuxer=h264 \
+        --enable-demuxer=hevc \
+        --enable-demuxer=vvc \
+        --enable-decoder=rawvideo \
+        --enable-decoder=h264 \
+        --enable-decoder=hevc \
+        --enable-decoder=mpeg2video \
+        --enable-decoder=mpeg1video \
+        --enable-decoder=mpeg4 \
+        --enable-decoder=av1 \
+        --enable-decoder=libdav1d \
+        --enable-decoder=vp9 \
+        --enable-decoder=vc1 \
+        --enable-decoder=vvc \
+        --enable-libdav1d \
+        --enable-parser=h264 \
+        --enable-parser=hevc \
+        --enable-parser=mpeg4video \
+        --enable-parser=mpegvideo \
+        --enable-parser=av1 \
+        --enable-parser=vp9 \
+        --enable-parser=vvc \
+        --enable-parser=vc1
+    
+    make -j$(nproc)
+    make install DESTDIR="${BUILD_DIR}/ffmpeg/install" prefix=""
+    
+    # Build ffms2
+    cd "${BUILD_DIR}/ffms2"
+    mkdir -p src/config
+    autoreconf -fiv
+    
+    PKG_CONFIG_PATH="${BUILD_DIR}/ffmpeg/install/lib/pkgconfig:${BUILD_DIR}/zlib/install/lib/pkgconfig" \
+        CC="${CC}" \
+        CXX="${CXX}" \
+        AR="${AR}" \
+        RANLIB="${RANLIB}" \
+        CFLAGS="${CFLAGS} -I${BUILD_DIR}/ffmpeg/install/include -I${BUILD_DIR}/zlib/install/include" \
+        CXXFLAGS="${CXXFLAGS} -I${BUILD_DIR}/ffmpeg/install/include -I${BUILD_DIR}/zlib/install/include" \
+        LDFLAGS="${LDFLAGS} -L${BUILD_DIR}/ffmpeg/install/lib -L${BUILD_DIR}/zlib/install/lib" \
+        LIBS="-lpthread -lm -lz" \
+        ./configure \
+        --enable-static \
+        --disable-shared \
+        --with-zlib="${BUILD_DIR}/zlib/install"
+    
+    make -j$(nproc)
+    
+    # Build XAV
+    cd "${srcdir}/xav"
+    
+    export PKG_CONFIG_ALL_STATIC=1
+    export FFMPEG_DIR="${BUILD_DIR}/ffmpeg/install"
+    export FFMS_INCLUDE_DIR="${BUILD_DIR}/ffms2/include"
+    export FFMS_LIB_DIR="${BUILD_DIR}/ffms2/src/core/.libs"
+    
+    cargo build --release --features static,vship
+}
+
+package() {
+    cd "${srcdir}/xav"
+    install -Dm755 "target/${CARCH}-unknown-linux-gnu/release/xav" -t "${pkgdir}/usr/bin"
+    install -Dm644 LICENSE "${pkgdir}/usr/share/licenses/${pkgname}/LICENSE"
+}
