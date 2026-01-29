@@ -2,12 +2,12 @@
 
 pkgname=xav-static-tq-git
 pkgver=r112.a27f172
-pkgrel=2
+pkgrel=3
 pkgdesc='The Most Efficient Chunked or Target Quality AV1/AV2 Encoding Framework (static build with TQ)'
 arch=('x86_64')
 url='https://github.com/emrakyz/xav'
 license=('MIT')
-makedepends=('git' 'cargo' 'nasm' 'clang' 'llvm' 'meson' 'ninja' 'autoconf' 'automake' 'cuda' 'make')
+makedepends=('git' 'cargo' 'nasm' 'clang' 'llvm' 'meson' 'ninja' 'autoconf' 'automake' 'hip-runtime-amd' 'make')
 depends=('svt-av1' 'mkvtoolnix-cli')
 optdepends=('gpac: for VVC muxing and concatenation'
             'opus-tools: for audio encoding')
@@ -186,8 +186,8 @@ build() {
     
     # Build vship
     cd "${BUILD_DIR}/vship"
-    # Build for CUDA (change to 'make build' for AMD HIP)
-    make buildcuda
+    # Build for AMD HIP
+    make build
     
     # Install vship to local build directory
     make install PREFIX="${BUILD_DIR}/vship/install"
