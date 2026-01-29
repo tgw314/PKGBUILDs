@@ -2,7 +2,7 @@
 
 pkgname=xav-static-notq-git
 pkgver=r112.a27f172
-pkgrel=10
+pkgrel=11
 pkgdesc='The Most Efficient Chunked Video Encoding Framework (static build without TQ)'
 arch=('x86_64')
 url='https://github.com/emrakyz/xav'
@@ -102,7 +102,10 @@ build() {
     export CXXFLAGS="${COMMON_FLAGS} -stdlib=libstdc++"
     # Link order is critical: libunwind depends on libunwind-x86_64, but libunwind-x86_64 also depends on libunwind.
     # Grouping them with --start-group/--end-group handles the circular dependency.
-    export LDFLAGS="-fuse-ld=lld -rtlib=compiler-rt -unwindlib=none -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all -static -fno-pic -fno-pie -L${BUILD_DIR}/libunwind/install/lib -Wl,--start-group -l:libunwind.a -l:libunwind-x86_64.a -Wl,--end-group"
+    # Note: Meson often adds its own groups, so we use -Wl,--start-group only once inside specific LDFLAGS if needed, 
+    # but here we just list them plainly and let linker resolve, or use --start-group carefully.
+    # The previous error "nested --start-group" suggests Meson is wrapping our LDFLAGS in a group already.
+    export LDFLAGS="-fuse-ld=lld -rtlib=compiler-rt -unwindlib=none -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all -static -fno-pic -fno-pie -L${BUILD_DIR}/libunwind/install/lib -l:libunwind.a -l:libunwind-x86_64.a"
     
     # Build zlib (only the library, skip examples)
     cd "${BUILD_DIR}/zlib"
