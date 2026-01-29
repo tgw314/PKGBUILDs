@@ -2,13 +2,13 @@
 
 pkgname=xav-static-notq-git
 pkgver=r112.a27f172
-pkgrel=6
+pkgrel=7
 pkgdesc='The Most Efficient Chunked Video Encoding Framework (static build without TQ)'
 arch=('x86_64')
 url='https://github.com/emrakyz/xav'
 license=('MIT')
 makedepends=('git' 'cargo' 'nasm' 'clang' 'llvm' 'meson' 'ninja' 'autoconf' 'automake' 'libtool')
-depends=('svt-av1' 'mkvtoolnix-cli')
+depends=('svt-av1' 'mkvtoolnix-cli' 'libunwind')
 optdepends=('gpac: for VVC muxing and concatenation'
             'opus-tools: for audio encoding')
 provides=('xav' 'xav-git')
@@ -17,10 +17,8 @@ source=("xav::git+https://github.com/emrakyz/xav.git"
         "zlib::git+https://github.com/madler/zlib.git"
         "dav1d::git+https://code.videolan.org/videolan/dav1d.git"
         "ffmpeg::git+https://github.com/FFmpeg/FFmpeg.git"
-        "ffms2::git+https://github.com/FFMS/ffms2.git"
-        "libunwind::git+https://github.com/libunwind/libunwind.git")
+        "ffms2::git+https://github.com/FFMS/ffms2.git")
 sha256sums=('SKIP'
-            'SKIP'
             'SKIP'
             'SKIP'
             'SKIP'
@@ -65,39 +63,12 @@ build() {
     export OBJCOPY="llvm-objcopy"
     export OBJDUMP="llvm-objdump"
     
-    # Build libunwind first (with adjusted flags for configure to work)
-    cd "${BUILD_DIR}/libunwind"
-    autoreconf -fiv
-    
-    # Temporarily use less aggressive flags for libunwind configure test
-    local _libunwind_cflags="-O3 -ffast-math -march=native -mtune=native -pipe -fomit-frame-pointer"
-    local _libunwind_ldflags="-fuse-ld=lld"
-    
-    ./configure \
-        --prefix="${BUILD_DIR}/libunwind/install" \
-        --enable-static \
-        --disable-shared \
-        --disable-tests \
-        --disable-documentation \
-        CC="${CC}" \
-        CXX="${CXX}" \
-        AR="${AR}" \
-        RANLIB="${RANLIB}" \
-        CFLAGS="${_libunwind_cflags}" \
-        CXXFLAGS="${_libunwind_cflags}" \
-        LDFLAGS="${_libunwind_ldflags}"
-    make -j$(nproc)
-    make install
-    
-    # Update library search paths to include libunwind
-    export LIBRARY_PATH="${BUILD_DIR}/libunwind/install/lib:${LIBRARY_PATH:-}"
-    export LD_LIBRARY_PATH="${BUILD_DIR}/libunwind/install/lib:${LD_LIBRARY_PATH:-}"
-    
-    # Now set aggressive flags for other dependencies (matching build.sh)
+    # Set aggressive flags for dependencies (matching build.sh)
+    # Note: libunwind is dynamically linked (like upstream's libgcc_s)
     export COMMON_FLAGS="-O3 -ffast-math -march=native -mtune=native -flto=thin -pipe -fno-math-errno -fomit-frame-pointer -fno-semantic-interposition -fno-stack-protector -fno-stack-clash-protection -fno-sanitize=all -fno-dwarf2-cfi-asm -fstrict-aliasing -fstrict-overflow -fno-zero-initialized-in-bss -static -fno-pic -fno-pie"
     export CFLAGS="${COMMON_FLAGS}"
     export CXXFLAGS="${COMMON_FLAGS} -stdlib=libstdc++"
-    export LDFLAGS="-fuse-ld=lld -rtlib=compiler-rt -unwindlib=libunwind -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all -static -fno-pic -fno-pie -L${BUILD_DIR}/libunwind/install/lib -lunwind"
+    export LDFLAGS="-fuse-ld=lld -rtlib=compiler-rt -unwindlib=libunwind -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all -static -fno-pic -fno-pie"
     
     # Build zlib (only the library, skip examples)
     cd "${BUILD_DIR}/zlib"
