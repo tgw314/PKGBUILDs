@@ -1,28 +1,24 @@
 # Maintainer: Josh Holmer <jholmer.in@gmail.com>
 
-pkgname=xav-static-tq-git
+pkgname=xav-static-notq-git
 pkgver=r112.a27f172
-pkgrel=4
-pkgdesc='The Most Efficient Chunked or Target Quality AV1/AV2 Encoding Framework (static build with TQ)'
+pkgrel=1
+pkgdesc='The Most Efficient Chunked Video Encoding Framework (static build without TQ)'
 arch=('x86_64')
 url='https://github.com/emrakyz/xav'
 license=('MIT')
-makedepends=('git' 'cargo' 'nasm' 'clang' 'llvm' 'meson' 'ninja' 'autoconf' 'automake' 'hip-runtime-amd' 'make')
+makedepends=('git' 'cargo' 'nasm' 'clang' 'llvm' 'meson' 'ninja' 'autoconf' 'automake')
 depends=('svt-av1' 'mkvtoolnix-cli')
 optdepends=('gpac: for VVC muxing and concatenation'
             'opus-tools: for audio encoding')
 provides=('xav' 'xav-git')
-conflicts=('xav' 'xav-git' 'xav-dynamic-tq-git')
+conflicts=('xav' 'xav-git' 'xav-dynamic-tq-git' 'xav-dynamic-notq-git' 'xav-static-tq-git')
 source=("xav::git+https://github.com/emrakyz/xav.git"
         "zlib::git+https://github.com/madler/zlib.git"
         "dav1d::git+https://code.videolan.org/videolan/dav1d.git"
         "ffmpeg::git+https://github.com/FFmpeg/FFmpeg.git"
-        "ffms2::git+https://github.com/FFMS/ffms2.git"
-        "vship::git+https://codeberg.org/Line-fr/Vship.git"
-        "hip-support.patch")
+        "ffms2::git+https://github.com/FFMS/ffms2.git")
 sha256sums=('SKIP'
-            'SKIP'
-            'SKIP'
             'SKIP'
             'SKIP'
             'SKIP'
@@ -34,10 +30,6 @@ pkgver() {
 }
 
 prepare() {
-    # Apply HIP support patch to xav
-    cd "${srcdir}/xav"
-    patch -p1 < "${srcdir}/hip-support.patch"
-    
     # Setup build directories
     export BUILD_DIR="${srcdir}"
     
@@ -52,9 +44,9 @@ prepare() {
     export OBJCOPY="llvm-objcopy"
     export OBJDUMP="llvm-objdump"
     
-    # Configure cargo for static build
+    # Configure cargo for static build without TQ
     cd "${srcdir}/xav"
-    cp -f .cargo/config.toml.static .cargo/config.toml
+    cp -f .cargo/config.toml.static_notq .cargo/config.toml
 }
 
 build() {
@@ -190,15 +182,7 @@ build() {
     
     make -j$(nproc)
     
-    # Build vship
-    cd "${BUILD_DIR}/vship"
-    # Build for AMD HIP
-    make build
-    
-    # Install vship to local build directory
-    make install PREFIX="${BUILD_DIR}/vship/install"
-    
-    # Build XAV
+    # Build XAV (without TQ/vship)
     cd "${srcdir}/xav"
     
     # Override HOME variable to fix hardcoded paths in build.rs
@@ -215,10 +199,9 @@ build() {
     export FFMPEG_DIR="${BUILD_DIR}/ffmpeg/install"
     export FFMS_INCLUDE_DIR="${BUILD_DIR}/ffms2/include"
     export FFMS_LIB_DIR="${BUILD_DIR}/ffms2/src/core/.libs"
-    export VSHIP_DIR="${BUILD_DIR}/vship/install/lib"
-    export PKG_CONFIG_PATH="${BUILD_DIR}/vship/install/lib/pkgconfig:${BUILD_DIR}/ffmpeg/install/lib/pkgconfig:${PKG_CONFIG_PATH}"
+    export PKG_CONFIG_PATH="${BUILD_DIR}/ffmpeg/install/lib/pkgconfig:${PKG_CONFIG_PATH}"
     
-    cargo build --release --features static,vship
+    cargo build --release --features static
 }
 
 package() {
