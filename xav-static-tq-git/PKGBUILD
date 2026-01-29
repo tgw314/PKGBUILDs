@@ -2,7 +2,7 @@
 
 pkgname=xav-static-tq-git
 pkgver=r112.a27f172
-pkgrel=3
+pkgrel=4
 pkgdesc='The Most Efficient Chunked or Target Quality AV1/AV2 Encoding Framework (static build with TQ)'
 arch=('x86_64')
 url='https://github.com/emrakyz/xav'
@@ -18,8 +18,10 @@ source=("xav::git+https://github.com/emrakyz/xav.git"
         "dav1d::git+https://code.videolan.org/videolan/dav1d.git"
         "ffmpeg::git+https://github.com/FFmpeg/FFmpeg.git"
         "ffms2::git+https://github.com/FFMS/ffms2.git"
-        "vship::git+https://codeberg.org/Line-fr/Vship.git")
+        "vship::git+https://codeberg.org/Line-fr/Vship.git"
+        "hip-support.patch")
 sha256sums=('SKIP'
+            'SKIP'
             'SKIP'
             'SKIP'
             'SKIP'
@@ -32,6 +34,10 @@ pkgver() {
 }
 
 prepare() {
+    # Apply HIP support patch to xav
+    cd "${srcdir}/xav"
+    patch -p1 < "${srcdir}/hip-support.patch"
+    
     # Setup build directories
     export BUILD_DIR="${srcdir}"
     
@@ -195,13 +201,22 @@ build() {
     # Build XAV
     cd "${srcdir}/xav"
     
+    # Override HOME variable to fix hardcoded paths in build.rs
+    export HOME="${srcdir}"
+    
+    # Create symlink structure that build.rs expects
+    mkdir -p "${srcdir}/.local/src"
+    ln -sf "${BUILD_DIR}/ffmpeg" "${srcdir}/.local/src/FFmpeg"
+    ln -sf "${BUILD_DIR}/dav1d" "${srcdir}/.local/src/dav1d"
+    ln -sf "${BUILD_DIR}/zlib" "${srcdir}/.local/src/zlib"
+    
+    # Setup environment for static linking
     export PKG_CONFIG_ALL_STATIC=1
     export FFMPEG_DIR="${BUILD_DIR}/ffmpeg/install"
     export FFMS_INCLUDE_DIR="${BUILD_DIR}/ffms2/include"
     export FFMS_LIB_DIR="${BUILD_DIR}/ffms2/src/core/.libs"
-    export PKG_CONFIG_PATH="${BUILD_DIR}/vship/install/lib/pkgconfig:${PKG_CONFIG_PATH}"
-    export VSHIP_LIB_DIR="${BUILD_DIR}/vship/install/lib"
-    export VSHIP_INCLUDE_DIR="${BUILD_DIR}/vship/install/include"
+    export VSHIP_DIR="${BUILD_DIR}/vship/install/lib"
+    export PKG_CONFIG_PATH="${BUILD_DIR}/vship/install/lib/pkgconfig:${BUILD_DIR}/ffmpeg/install/lib/pkgconfig:${PKG_CONFIG_PATH}"
     
     cargo build --release --features static,vship
 }
