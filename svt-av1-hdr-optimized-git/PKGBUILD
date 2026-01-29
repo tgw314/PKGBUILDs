@@ -8,7 +8,7 @@
 pkgname=svt-av1-hdr-optimized-git
 _pkgname=svt-av1-hdr
 pkgver=3.1.0.r4494.g3b7097c3
-pkgrel=1
+pkgrel=2
 pkgdesc='SVT-AV1 Encoder with perceptual enhancements (shared lib + static app), optimized with Clang + O3 + ThinLTO'
 arch=('x86_64')
 url='https://github.com/juliobbv-p/svt-av1-hdr'
@@ -29,13 +29,15 @@ pkgver() {
 }
 
 build() {
-    local _commonflags="-O3 -ffast-math -flto=thin -ffunction-sections -fdata-sections -fomit-frame-pointer"
+  # Aggressive compiler flags matching xav build.sh for maximum performance
+  local _commonflags="-O3 -ffast-math -march=native -mtune=native -flto=thin -pipe -fno-math-errno -fomit-frame-pointer -fno-semantic-interposition -fno-stack-protector -fno-stack-clash-protection -fno-sanitize=all -fno-dwarf2-cfi-asm -fstrict-aliasing -fstrict-overflow -fno-zero-initialized-in-bss -ffunction-sections -fdata-sections -fno-pic -fno-pie"
 
-  # Common compiler and linker flags for Clang with optimizations
+  # Common compiler and linker flags for Clang with aggressive optimizations
   local _cflags="${CFLAGS/-Wp,-D_FORTIFY_SOURCE=3/} ${_commonflags}"
-  local _cxxflags="${CXXFLAGS/-Wp,-D_FORTIFY_SOURCE=3/} ${_commonflags}"
+  local _cxxflags="${CXXFLAGS/-Wp,-D_FORTIFY_SOURCE=3/} ${_commonflags} -stdlib=libstdc++"
 
-  local _ldflags="${LDFLAGS} -flto=thin -fuse-ld=mold -Wl,--gc-sections -Wl,--as-needed -Wl,--icf=all"
+  local _ldflags="${LDFLAGS} -flto=thin -fuse-ld=mold -rtlib=compiler-rt -unwindlib=libunwind -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all"
+  
   local _cmake_common_args=(
     -DCMAKE_INSTALL_PREFIX=/usr
     -DCMAKE_BUILD_TYPE=Release
