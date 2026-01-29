@@ -2,12 +2,12 @@
 
 pkgname=xav-static-tq-git
 pkgver=r112.a27f172
-pkgrel=1
+pkgrel=2
 pkgdesc='The Most Efficient Chunked or Target Quality AV1/AV2 Encoding Framework (static build with TQ)'
 arch=('x86_64')
 url='https://github.com/emrakyz/xav'
 license=('MIT')
-makedepends=('git' 'cargo' 'nasm' 'clang' 'llvm' 'meson' 'ninja')
+makedepends=('git' 'cargo' 'nasm' 'clang' 'llvm' 'meson' 'ninja' 'autoconf' 'automake' 'cuda' 'make')
 depends=('svt-av1' 'mkvtoolnix-cli')
 optdepends=('gpac: for VVC muxing and concatenation'
             'opus-tools: for audio encoding')
@@ -17,8 +17,10 @@ source=("xav::git+https://github.com/emrakyz/xav.git"
         "zlib::git+https://github.com/madler/zlib.git"
         "dav1d::git+https://code.videolan.org/videolan/dav1d.git"
         "ffmpeg::git+https://github.com/FFmpeg/FFmpeg.git"
-        "ffms2::git+https://github.com/FFMS/ffms2.git")
+        "ffms2::git+https://github.com/FFMS/ffms2.git"
+        "vship::git+https://codeberg.org/Line-fr/Vship.git")
 sha256sums=('SKIP'
+            'SKIP'
             'SKIP'
             'SKIP'
             'SKIP'
@@ -63,16 +65,16 @@ build() {
     export OBJCOPY="llvm-objcopy"
     export OBJDUMP="llvm-objdump"
     
-    # Common compiler flags
-    export COMMON_FLAGS="-O3 -ffast-math -march=x86-64-v3 -mtune=generic -flto=thin -pipe -fno-math-errno -fomit-frame-pointer -fno-semantic-interposition -fno-stack-protector -fno-stack-clash-protection -fno-sanitize=all -fno-dwarf2-cfi-asm -fstrict-aliasing -fstrict-overflow -fno-zero-initialized-in-bss -static -fno-pic -fno-pie"
+    # Common compiler flags for static build
+    export COMMON_FLAGS="-O3 -ffast-math -march=x86-64-v3 -mtune=generic -flto=thin -pipe -fno-math-errno -fomit-frame-pointer -fno-semantic-interposition -static"
     export CFLAGS="${COMMON_FLAGS}"
-    export CXXFLAGS="${COMMON_FLAGS} -stdlib=libstdc++"
-    export LDFLAGS="-fuse-ld=lld -rtlib=compiler-rt -unwindlib=libunwind -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all -static -fno-pic -fno-pie"
+    export CXXFLAGS="${COMMON_FLAGS}"
+    export LDFLAGS="-static -fuse-ld=lld -Wl,-O3 -Wl,--as-needed -Wl,--gc-sections -Wl,--strip-all"
     
-    # Build zlib
+    # Build zlib (only the library, skip examples)
     cd "${BUILD_DIR}/zlib"
     ./configure --static --prefix="${BUILD_DIR}/zlib/install"
-    make -j$(nproc)
+    make -j$(nproc) libz.a
     make install
     
     # Build dav1d
@@ -182,6 +184,14 @@ build() {
     
     make -j$(nproc)
     
+    # Build vship
+    cd "${BUILD_DIR}/vship"
+    # Build for CUDA (change to 'make build' for AMD HIP)
+    make buildcuda
+    
+    # Install vship to local build directory
+    make install PREFIX="${BUILD_DIR}/vship/install"
+    
     # Build XAV
     cd "${srcdir}/xav"
     
@@ -189,6 +199,9 @@ build() {
     export FFMPEG_DIR="${BUILD_DIR}/ffmpeg/install"
     export FFMS_INCLUDE_DIR="${BUILD_DIR}/ffms2/include"
     export FFMS_LIB_DIR="${BUILD_DIR}/ffms2/src/core/.libs"
+    export PKG_CONFIG_PATH="${BUILD_DIR}/vship/install/lib/pkgconfig:${PKG_CONFIG_PATH}"
+    export VSHIP_LIB_DIR="${BUILD_DIR}/vship/install/lib"
+    export VSHIP_INCLUDE_DIR="${BUILD_DIR}/vship/install/include"
     
     cargo build --release --features static,vship
 }
