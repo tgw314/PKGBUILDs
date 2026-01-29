@@ -2,7 +2,7 @@
 
 pkgname=xav-static-notq-git
 pkgver=r112.a27f172
-pkgrel=9
+pkgrel=10
 pkgdesc='The Most Efficient Chunked Video Encoding Framework (static build without TQ)'
 arch=('x86_64')
 url='https://github.com/emrakyz/xav'
@@ -80,6 +80,7 @@ build() {
         --disable-tests \
         --disable-documentation \
         --disable-minidebuginfo \
+        --enable-cxx-exceptions \
         CC="${CC}" \
         CXX="${CXX}" \
         AR="${AR}" \
