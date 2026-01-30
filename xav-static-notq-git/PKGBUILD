@@ -18,8 +18,10 @@ source=("xav::git+https://github.com/emrakyz/xav.git"
         "dav1d::git+https://code.videolan.org/videolan/dav1d.git"
         "ffmpeg::git+https://github.com/FFmpeg/FFmpeg.git"
         "ffms2::git+https://github.com/FFMS/ffms2.git"
-        "llvm-libunwind::git+https://github.com/llvm/llvm-project.git#sparse-checkout=runtimes/unwind,libunwind")
+        "llvm-libunwind.src.tar.xz::https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/libunwind-19.1.7.src.tar.xz"
+        "runtimes-cmake::https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-19.1.7/runtimes/CMakeLists.txt")
 sha256sums=('SKIP'
+            'SKIP'
             'SKIP'
             'SKIP'
             'SKIP'
@@ -68,9 +70,9 @@ build() {
     # Reset Arch Linux default flags to avoid conflict with -fno-pic/-fno-pie
     unset CFLAGS CXXFLAGS LDFLAGS
     
-    # Build llvm-libunwind (part of llvm-project)
-    # We need to configure just the libunwind runtimes
-    cd "${BUILD_DIR}/llvm-libunwind/libunwind"
+    # Build llvm-libunwind (using release tarball to save bandwidth)
+    # The tarball structure is slightly different from git layout
+    cd "${BUILD_DIR}/libunwind-19.1.7.src"
     
     # Use CMake for llvm-libunwind
     cmake -S . -B build -G Ninja \
