@@ -100,7 +100,8 @@ build() {
     
     # We use -unwindlib=none and link libunwind manually to ensure we pick up our static build
     # llvm-libunwind produces 'libunwind.a' which contains everything needed (unlike Savannah version)
-    export LDFLAGS="-fuse-ld=lld -rtlib=compiler-rt -unwindlib=none -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all -static -fno-pic -fno-pie -no-pie -L${BUILD_DIR}/libunwind/install/lib -lunwind"
+    # Added -lpthread and -latomic which are often required for static builds (dav1d atomics check, libunwind)
+    export LDFLAGS="-fuse-ld=lld -rtlib=compiler-rt -unwindlib=none -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all -static -fno-pic -fno-pie -no-pie -L${BUILD_DIR}/libunwind/install/lib -lunwind -lpthread -latomic"
     
     # Build zlib (only the library, skip examples)
     cd "${BUILD_DIR}/zlib"
