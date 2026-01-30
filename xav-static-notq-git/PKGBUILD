@@ -2,7 +2,7 @@
 
 pkgname=xav-static-notq-git
 pkgver=r112.a27f172
-pkgrel=16
+pkgrel=17
 pkgdesc='The Most Efficient Chunked Video Encoding Framework (static build without TQ)'
 arch=('x86_64')
 url='https://github.com/emrakyz/xav'
@@ -18,10 +18,8 @@ source=("xav::git+https://github.com/emrakyz/xav.git"
         "dav1d::git+https://code.videolan.org/videolan/dav1d.git"
         "ffmpeg::git+https://github.com/FFmpeg/FFmpeg.git"
         "ffms2::git+https://github.com/FFMS/ffms2.git"
-        "llvm-libunwind.src.tar.xz::https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/libunwind-19.1.7.src.tar.xz"
-        "runtimes-cmake::https://raw.githubusercontent.com/llvm/llvm-project/llvmorg-19.1.7/runtimes/CMakeLists.txt")
+        "llvm-project-19.1.7.src.tar.xz::https://github.com/llvm/llvm-project/releases/download/llvmorg-19.1.7/llvm-project-19.1.7.src.tar.xz")
 sha256sums=('SKIP'
-            'SKIP'
             'SKIP'
             'SKIP'
             'SKIP'
