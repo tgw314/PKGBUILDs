@@ -2,7 +2,7 @@
 
 pkgname=xav-static-notq-git
 pkgver=r112.a27f172
-pkgrel=13
+pkgrel=16
 pkgdesc='The Most Efficient Chunked Video Encoding Framework (static build without TQ)'
 arch=('x86_64')
 url='https://github.com/emrakyz/xav'
@@ -70,18 +70,19 @@ build() {
     # Reset Arch Linux default flags to avoid conflict with -fno-pic/-fno-pie
     unset CFLAGS CXXFLAGS LDFLAGS
     
-    # Build llvm-libunwind (using release tarball to save bandwidth)
-    # The tarball structure is slightly different from git layout
-    cd "${BUILD_DIR}/libunwind-19.1.7.src"
+    # Build llvm-libunwind from full project source (using runtimes build system)
+    cd "${BUILD_DIR}/llvm-project-19.1.7.src"
     
-    # Use CMake for llvm-libunwind
-    cmake -S . -B build -G Ninja \
+    # Use CMake via runtimes directory to correctly bootstrap libunwind
+    cmake -S runtimes -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX="${BUILD_DIR}/libunwind/install" \
-        -DLIBUNWIND_ENABLE_SHARED=OFF \
-        -DLIBUNWIND_ENABLE_STATIC=ON \
         -DCMAKE_C_COMPILER="${CC}" \
         -DCMAKE_CXX_COMPILER="${CXX}" \
+        -DLLVM_ENABLE_RUNTIMES="libunwind" \
+        -DLIBUNWIND_ENABLE_SHARED=OFF \
+        -DLIBUNWIND_ENABLE_STATIC=ON \
+        -DLIBUNWIND_INSTALL_HEADERS=ON \
         -DCMAKE_C_FLAGS="-O3 -fno-pic -fno-pie -fno-stack-protector" \
         -DCMAKE_CXX_FLAGS="-O3 -fno-pic -fno-pie -fno-stack-protector"
     
