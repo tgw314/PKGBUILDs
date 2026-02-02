@@ -93,14 +93,15 @@ build() {
     
     # Set aggressive flags for dependencies (matching build.sh)
     # Now including -fno-pic and -fno-pie again, backed by llvm-libunwind built the same way
-    # Added -no-pie to ensure linker creates a non-relocatable executable
-    export COMMON_FLAGS="-O3 -ffast-math -march=native -mtune=native -flto=thin -pipe -fno-math-errno -fomit-frame-pointer -fno-semantic-interposition -fno-stack-protector -fno-stack-clash-protection -fno-sanitize=all -fno-dwarf2-cfi-asm -fstrict-aliasing -fstrict-overflow -fno-zero-initialized-in-bss -static -fno-pic -fno-pie -no-pie"
+    # Removed -no-pie from CFLAGS to avoid unused argument warnings that confuse Meson checks
+    export COMMON_FLAGS="-O3 -ffast-math -march=native -mtune=native -flto=thin -pipe -fno-math-errno -fomit-frame-pointer -fno-semantic-interposition -fno-stack-protector -fno-stack-clash-protection -fno-sanitize=all -fno-dwarf2-cfi-asm -fstrict-aliasing -fstrict-overflow -fno-zero-initialized-in-bss -static -fno-pic -fno-pie"
     export CFLAGS="${COMMON_FLAGS}"
     export CXXFLAGS="${COMMON_FLAGS} -stdlib=libstdc++"
     
     # We use -unwindlib=none and link libunwind manually to ensure we pick up our static build
     # llvm-libunwind produces 'libunwind.a' which contains everything needed (unlike Savannah version)
     # Added -lpthread and -latomic which are often required for static builds (dav1d atomics check, libunwind)
+    # Added -no-pie here (link time) to fix relocation errors, NOT in CFLAGS
     export LDFLAGS="-fuse-ld=lld -rtlib=compiler-rt -unwindlib=none -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all -static -fno-pic -fno-pie -no-pie -L${BUILD_DIR}/libunwind/install/lib -lunwind -lpthread -latomic"
     
     # Build zlib (only the library, skip examples)
