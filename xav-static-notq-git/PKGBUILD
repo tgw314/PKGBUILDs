@@ -236,6 +236,10 @@ build() {
     export FFMS_LIB_DIR="${BUILD_DIR}/ffms2/src/core/.libs"
     export PKG_CONFIG_PATH="${BUILD_DIR}/ffmpeg/install/lib/pkgconfig:${PKG_CONFIG_PATH}"
     
+    # Force Rust to not produce a PIE (Position Independent Executable)
+    # This is required because we are linking against static libraries built with -fno-pic
+    export RUSTFLAGS="-C link-arg=-no-pie"
+
     cargo build --release --features static
 }
 
