@@ -26,26 +26,15 @@ sha256sums=('SKIP'
             'SKIP'
             'SKIP')
 
+# Build configuration
+_llvm_ver=19.1.7
+
 pkgver() {
     cd "xav"
     printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
 }
 
 prepare() {
-    # Setup build directories
-    export BUILD_DIR="${srcdir}"
-    
-    # Setup LLVM toolchain
-    export CC="clang"
-    export CXX="clang++"
-    export LD="ld.lld"
-    export AR="llvm-ar"
-    export NM="llvm-nm"
-    export RANLIB="llvm-ranlib"
-    export STRIP="llvm-strip"
-    export OBJCOPY="llvm-objcopy"
-    export OBJDUMP="llvm-objdump"
-    
     # Configure cargo for static build without TQ
     cd "${srcdir}/xav"
     cp -f .cargo/config.toml.static_notq .cargo/config.toml
@@ -54,7 +43,7 @@ prepare() {
 build() {
     export BUILD_DIR="${srcdir}"
     
-    # Setup LLVM toolchain
+    # --- LLVM Toolchain Setup ---
     export CC="clang"
     export CXX="clang++"
     export LD="ld.lld"
@@ -65,13 +54,37 @@ build() {
     export OBJCOPY="llvm-objcopy"
     export OBJDUMP="llvm-objdump"
     
-    # Reset Arch Linux default flags to avoid conflict with -fno-pic/-fno-pie
+    # --- Flags Setup ---
+    # Reset Arch Linux default flags
     unset CFLAGS CXXFLAGS LDFLAGS
     
-    # Build llvm-libunwind from full project source (using runtimes build system)
-    cd "${BUILD_DIR}/llvm-project-19.1.7.src"
+    # Common optimization flags (matching upstream build.sh)
+    # Note: -no-pie is NOT included here to avoid "unused argument" warnings during compilation checks
+    local _common_flags="-O3 -ffast-math -march=native -mtune=native -flto=thin -pipe \
+        -fno-math-errno -fomit-frame-pointer -fno-semantic-interposition \
+        -fno-stack-protector -fno-stack-clash-protection -fno-sanitize=all \
+        -fno-dwarf2-cfi-asm -fstrict-aliasing -fstrict-overflow \
+        -fno-zero-initialized-in-bss -static -fno-pic -fno-pie"
     
-    # Use CMake via runtimes directory to correctly bootstrap libunwind
+    export COMMON_FLAGS="${_common_flags}"
+    export CFLAGS="${COMMON_FLAGS}"
+    export CXXFLAGS="${COMMON_FLAGS} -stdlib=libstdc++"
+    
+    # Linker flags
+    # -no-pie: Required for static linking with -fno-pic objects on Arch
+    # -unwindlib=none: We link our own static libunwind manually
+    # Note: -lpthread -latomic removed as requested for testing
+    export LDFLAGS="-fuse-ld=lld -rtlib=compiler-rt -unwindlib=none \
+        -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none \
+        -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr \
+        -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all \
+        -static -fno-pic -fno-pie -no-pie \
+        -L${BUILD_DIR}/libunwind/install/lib -lunwind"
+    
+    # --- Build llvm-libunwind ---
+    msg2 "Building llvm-libunwind..."
+    cd "${BUILD_DIR}/llvm-project-${_llvm_ver}.src"
+    
     cmake -S runtimes -B build -G Ninja \
         -DCMAKE_BUILD_TYPE=Release \
         -DCMAKE_INSTALL_PREFIX="${BUILD_DIR}/libunwind/install" \
@@ -87,31 +100,21 @@ build() {
     ninja -C build
     ninja -C build install
     
-    # Update library search paths to include our static llvm-libunwind
+    # Update library paths for subsequent builds
     export LIBRARY_PATH="${BUILD_DIR}/libunwind/install/lib:${LIBRARY_PATH:-}"
     export LD_LIBRARY_PATH="${BUILD_DIR}/libunwind/install/lib:${LD_LIBRARY_PATH:-}"
     
-    # Set aggressive flags for dependencies (matching build.sh)
-    # Now including -fno-pic and -fno-pie again, backed by llvm-libunwind built the same way
-    # Removed -no-pie from CFLAGS to avoid unused argument warnings that confuse Meson checks
-    export COMMON_FLAGS="-O3 -ffast-math -march=native -mtune=native -flto=thin -pipe -fno-math-errno -fomit-frame-pointer -fno-semantic-interposition -fno-stack-protector -fno-stack-clash-protection -fno-sanitize=all -fno-dwarf2-cfi-asm -fstrict-aliasing -fstrict-overflow -fno-zero-initialized-in-bss -static -fno-pic -fno-pie"
-    export CFLAGS="${COMMON_FLAGS}"
-    export CXXFLAGS="${COMMON_FLAGS} -stdlib=libstdc++"
-    
-    # We use -unwindlib=none and link libunwind manually to ensure we pick up our static build
-    # llvm-libunwind produces 'libunwind.a' which contains everything needed (unlike Savannah version)
-    # Added -lpthread and -latomic which are often required for static builds (dav1d atomics check, libunwind)
-    # Added -no-pie here (link time) to fix relocation errors, NOT in CFLAGS
-    export LDFLAGS="-fuse-ld=lld -rtlib=compiler-rt -unwindlib=none -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all -static -fno-pic -fno-pie -no-pie -L${BUILD_DIR}/libunwind/install/lib -lunwind -lpthread -latomic"
-    
-    # Build zlib (only the library, skip examples)
+    # --- Build zlib ---
+    msg2 "Building zlib..."
     cd "${BUILD_DIR}/zlib"
     ./configure --static --prefix="${BUILD_DIR}/zlib/install"
     make -j$(nproc) libz.a
     make install
     
-    # Build dav1d
+    # --- Build dav1d ---
+    msg2 "Building dav1d..."
     cd "${BUILD_DIR}/dav1d"
+    # Note: LDFLAGS are passed via environment
     meson setup build --default-library=static \
         --buildtype=release \
         -Denable_tools=false \
@@ -120,7 +123,7 @@ build() {
         -Denable_asm=true
     ninja -C build
     
-    # Setup dav1d pkg-config
+    # Setup dav1d pkg-config manually (upstream build.sh method)
     mkdir -p "${BUILD_DIR}/dav1d/lib/pkgconfig"
     sed "s|prefix=/usr/local|prefix=${BUILD_DIR}/dav1d|g" \
         "${BUILD_DIR}/dav1d/build/meson-private/dav1d.pc" | \
@@ -129,117 +132,66 @@ build() {
         sed "s|libdir=\${prefix}/lib|libdir=\${prefix}/build/src|g" \
         > "${BUILD_DIR}/dav1d/lib/pkgconfig/dav1d.pc"
     
-    # Build FFmpeg
+    # --- Build FFmpeg ---
+    msg2 "Building FFmpeg..."
     export PKG_CONFIG_PATH="${BUILD_DIR}/dav1d/lib/pkgconfig:${BUILD_DIR}/ffmpeg/install/lib/pkgconfig"
     
     cd "${BUILD_DIR}/ffmpeg"
     ./configure \
-        --cc="${CC}" \
-        --cxx="${CXX}" \
-        --ar="${AR}" \
-        --ranlib="${RANLIB}" \
-        --strip="${STRIP}" \
-        --extra-cflags="${CFLAGS}" \
-        --extra-cxxflags="${CXXFLAGS}" \
-        --extra-ldflags="${LDFLAGS}" \
-        --disable-shared \
-        --enable-static \
-        --pkg-config-flags="--static" \
-        --disable-programs \
-        --disable-doc \
-        --disable-htmlpages \
-        --disable-manpages \
-        --disable-podpages \
-        --disable-txtpages \
-        --disable-network \
-        --disable-autodetect \
-        --disable-all \
-        --disable-everything \
-        --enable-avcodec \
-        --enable-avformat \
-        --enable-avutil \
-        --enable-swscale \
-        --enable-swresample \
+        --cc="${CC}" --cxx="${CXX}" --ar="${AR}" --ranlib="${RANLIB}" --strip="${STRIP}" \
+        --extra-cflags="${CFLAGS}" --extra-cxxflags="${CXXFLAGS}" --extra-ldflags="${LDFLAGS}" \
+        --disable-shared --enable-static --pkg-config-flags="--static" \
+        --disable-programs --disable-doc --disable-htmlpages --disable-manpages --disable-podpages --disable-txtpages \
+        --disable-network --disable-autodetect --disable-all --disable-everything \
+        --enable-avcodec --enable-avformat --enable-avutil --enable-swscale --enable-swresample \
         --enable-protocol=file \
-        --enable-demuxer=matroska \
-        --enable-demuxer=mov \
-        --enable-demuxer=mpegts \
-        --enable-demuxer=mpegps \
-        --enable-demuxer=flv \
-        --enable-demuxer=avi \
-        --enable-demuxer=ivf \
-        --enable-demuxer=yuv4mpegpipe \
-        --enable-demuxer=h264 \
-        --enable-demuxer=hevc \
-        --enable-demuxer=vvc \
-        --enable-decoder=rawvideo \
-        --enable-decoder=h264 \
-        --enable-decoder=hevc \
-        --enable-decoder=mpeg2video \
-        --enable-decoder=mpeg1video \
-        --enable-decoder=mpeg4 \
-        --enable-decoder=av1 \
-        --enable-decoder=libdav1d \
-        --enable-decoder=vp9 \
-        --enable-decoder=vc1 \
-        --enable-decoder=vvc \
+        --enable-demuxer=matroska,mov,mpegts,mpegps,flv,avi,ivf,yuv4mpegpipe,h264,hevc,vvc \
+        --enable-decoder=rawvideo,h264,hevc,mpeg2video,mpeg1video,mpeg4,av1,libdav1d,vp9,vc1,vvc \
         --enable-libdav1d \
-        --enable-parser=h264 \
-        --enable-parser=hevc \
-        --enable-parser=mpeg4video \
-        --enable-parser=mpegvideo \
-        --enable-parser=av1 \
-        --enable-parser=vp9 \
-        --enable-parser=vvc \
-        --enable-parser=vc1
+        --enable-parser=h264,hevc,mpeg4video,mpegvideo,av1,vp9,vvc,vc1
     
     make -j$(nproc)
     make install DESTDIR="${BUILD_DIR}/ffmpeg/install" prefix=""
     
-    # Build ffms2
+    # --- Build ffms2 ---
+    msg2 "Building ffms2..."
     cd "${BUILD_DIR}/ffms2"
     mkdir -p src/config
     autoreconf -fiv
     
     PKG_CONFIG_PATH="${BUILD_DIR}/ffmpeg/install/lib/pkgconfig:${BUILD_DIR}/zlib/install/lib/pkgconfig" \
-        CC="${CC}" \
-        CXX="${CXX}" \
-        AR="${AR}" \
-        RANLIB="${RANLIB}" \
+        CC="${CC}" CXX="${CXX}" AR="${AR}" RANLIB="${RANLIB}" \
         CFLAGS="${CFLAGS} -I${BUILD_DIR}/ffmpeg/install/include -I${BUILD_DIR}/zlib/install/include" \
         CXXFLAGS="${CXXFLAGS} -I${BUILD_DIR}/ffmpeg/install/include -I${BUILD_DIR}/zlib/install/include" \
         LDFLAGS="${LDFLAGS} -L${BUILD_DIR}/ffmpeg/install/lib -L${BUILD_DIR}/zlib/install/lib" \
         LIBS="-lpthread -lm -lz" \
         ./configure \
-        --enable-static \
-        --disable-shared \
+        --enable-static --disable-shared \
         --with-zlib="${BUILD_DIR}/zlib/install"
     
     make -j$(nproc)
     
-    # Build XAV (without TQ/vship)
+    # --- Build XAV ---
+    msg2 "Building XAV..."
     cd "${srcdir}/xav"
     
-    # Override HOME variable to fix hardcoded paths in build.rs
+    # Setup build.rs expected structure
     export HOME="${srcdir}"
-    
-    # Create symlink structure that build.rs expects
     mkdir -p "${srcdir}/.local/src"
     ln -sf "${BUILD_DIR}/ffmpeg" "${srcdir}/.local/src/FFmpeg"
     ln -sf "${BUILD_DIR}/dav1d" "${srcdir}/.local/src/dav1d"
     ln -sf "${BUILD_DIR}/zlib" "${srcdir}/.local/src/zlib"
     
-    # Setup environment for static linking
+    # Env for static linking
     export PKG_CONFIG_ALL_STATIC=1
     export FFMPEG_DIR="${BUILD_DIR}/ffmpeg/install"
     export FFMS_INCLUDE_DIR="${BUILD_DIR}/ffms2/include"
     export FFMS_LIB_DIR="${BUILD_DIR}/ffms2/src/core/.libs"
     export PKG_CONFIG_PATH="${BUILD_DIR}/ffmpeg/install/lib/pkgconfig:${PKG_CONFIG_PATH}"
     
-    # Force Rust to not produce a PIE (Position Independent Executable)
-    # This is required because we are linking against static libraries built with -fno-pic
+    # Force Rust to use -no-pie (fix for Arch static linking)
     export RUSTFLAGS="-C link-arg=-no-pie"
-
+    
     cargo build --release --features static
 }
 

@@ -7,8 +7,8 @@
 
 pkgname=svt-av1-hdr-optimized-git
 _pkgname=svt-av1-hdr
-pkgver=3.1.0.r4494.g3b7097c3
-pkgrel=2
+pkgver=3.1.3.r4535.g84b334846
+pkgrel=1
 pkgdesc='SVT-AV1 Encoder with perceptual enhancements (shared lib + static app), optimized with Clang + O3 + ThinLTO'
 arch=('x86_64')
 url='https://github.com/juliobbv-p/svt-av1-hdr'
