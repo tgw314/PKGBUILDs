@@ -7,7 +7,7 @@
 
 pkgname=svt-av1-hdr-optimized-git
 _pkgname=svt-av1-hdr
-pkgver=3.1.3.r4535.g84b334846
+pkgver=4.0.1.r4702.g09600d8a1
 pkgrel=1
 pkgdesc='SVT-AV1 Encoder with perceptual enhancements (shared lib + static app), optimized with Clang + O3 + ThinLTO'
 arch=('x86_64')
@@ -36,7 +36,7 @@ build() {
   local _cflags="${CFLAGS/-Wp,-D_FORTIFY_SOURCE=3/} ${_commonflags}"
   local _cxxflags="${CXXFLAGS/-Wp,-D_FORTIFY_SOURCE=3/} ${_commonflags} -stdlib=libstdc++"
 
-  local _ldflags="${LDFLAGS} -flto=thin -fuse-ld=mold -rtlib=compiler-rt -unwindlib=libunwind -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--strip-all -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--discard-all -Wl,--icf=all"
+  local _ldflags="${LDFLAGS} -flto=thin -fuse-ld=mold -rtlib=compiler-rt -unwindlib=libunwind -Wl,-O3 -Wl,--lto-O3 -Wl,--as-needed -Wl,-z,norelro -Wl,--build-id=none -Wl,--relax -Wl,-z,noseparate-code -Wl,--no-eh-frame-hdr -Wl,-znow -Wl,--gc-sections -Wl,--icf=all"
   
   local _cmake_common_args=(
     -DCMAKE_INSTALL_PREFIX=/usr
@@ -56,20 +56,26 @@ build() {
   cd "${srcdir}/${_pkgname}"
   cmake -B build-shared -S . \
     -DBUILD_SHARED_LIBS=ON \
+    -DBUILD_APPS=OFF \
     "${_cmake_common_args[@]}"
   make -C build-shared
 
   # --- Stage 2: Build Static Executable (SvtAv1EncApp) ---
   cmake -B build-static -S . \
     -DBUILD_SHARED_LIBS=OFF \
+    -DBUILD_APPS=ON \
     "${_cmake_common_args[@]}"
   make -C build-static
 }
 
 package() {
-  # Installs the shared library AND the static SvtAv1EncApp, which has already
-  # replaced the dynamic version in the build output directory.
+  # Installs the shared library.
+  # SvtAv1EncApp is NOT installed here because BUILD_APPS=OFF for this build.
   make -C "${srcdir}/${_pkgname}/build-shared" DESTDIR="${pkgdir}" install
+
+  # Install the static executable from the static build
+  # Note: CMake outputs binaries to the source tree's Bin/Release directory regardless of build dir
+  install -Dm755 "${srcdir}/${_pkgname}/Bin/Release/SvtAv1EncApp" "${pkgdir}/usr/bin/SvtAv1EncApp"
 
   # Install license files
   install -Dm644 "${_pkgname}"/{LICENSE,PATENTS}.md -t "${pkgdir}/usr/share/licenses/${pkgname}"
