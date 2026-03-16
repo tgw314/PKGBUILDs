@@ -1,0 +1,45 @@
+# Maintainer : Koki Tagawa <me@k0k1.dev>
+
+pkgname=vship-amd-git
+_pkgname=Vship
+pkgver=5.0.0.7.g4b400e5
+pkgrel=1
+pkgdesc="Library and CLI tool for computing the metric difference between two videos (AMD version)"
+arch=('x86_64')
+url="https://codeberg.org/Line-fr/Vship"
+license=('MIT')
+depends=('ffms2' 'hip-runtime-amd')
+makedepends=('git' 'hip-runtime-amd' 'clang' 'pkgconf')
+provides=('vship' 'libvship' 'ffvship')
+conflicts=('vship' 'vship-cuda-git')
+source=("${_pkgname}::git+${url}.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "${_pkgname}"
+  git describe --tags --long | sed 's/^v//;s/-/./g'
+}
+
+build() {
+  cd "${_pkgname}"
+
+  # Set path for AMD ROCm
+  export PATH="/opt/rocm/bin:/opt/rocm/lib/llvm/bin:${PATH}"
+  export HIP_PATH=/opt/rocm
+
+  # Build AMD library optimized for the local GPU architecture (--offload-arch=native)
+  make build
+  
+  # Build CLI tool using clang++ (as specified in Makefile)
+  make buildFFVSHIP
+}
+
+package() {
+  cd "${_pkgname}"
+  
+  # Makefile respects PREFIX and DESTDIR
+  make PREFIX="/usr" DESTDIR="${pkgdir}" install
+  
+  # Install license which is not handled by Makefile
+  install -Dm644 LICENSE -t "${pkgdir}/usr/share/licenses/${pkgname}/"
+}

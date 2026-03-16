@@ -1,0 +1,44 @@
+# Maintainer : Koki Tagawa <me@k0k1.dev>
+
+pkgname=vship-cuda-git
+_pkgname=Vship
+pkgver=5.0.0.7.g4b400e5
+pkgrel=1
+pkgdesc="Library and CLI tool for computing the metric difference between two videos (CUDA version)"
+arch=('x86_64')
+url="https://codeberg.org/Line-fr/Vship"
+license=('MIT')
+depends=('ffms2' 'nvidia-utils')
+makedepends=('git' 'cuda' 'clang' 'pkgconf')
+provides=('vship' 'libvship' 'ffvship')
+conflicts=('vship' 'ffvship-amd-git')
+source=("${_pkgname}::git+${url}.git")
+sha256sums=('SKIP')
+
+pkgver() {
+  cd "${_pkgname}"
+  git describe --tags --long | sed 's/^v//;s/-/./g'
+}
+
+build() {
+  cd "${_pkgname}"
+
+  # Set path for nvcc
+  export PATH="/opt/cuda/bin:${PATH}"
+
+  # Build CUDA library optimized for the local GPU architecture (-arch=native)
+  make buildcuda
+  
+  # Build CLI tool using clang++ (as specified in Makefile)
+  make buildFFVSHIP
+}
+
+package() {
+  cd "${_pkgname}"
+  
+  # Makefile respects PREFIX and DESTDIR
+  make PREFIX="/usr" DESTDIR="${pkgdir}" install
+  
+  # Install license which is not handled by Makefile
+  install -Dm644 LICENSE -t "${pkgdir}/usr/share/licenses/${pkgname}/"
+}
