@@ -1,0 +1,67 @@
+diff --git a/internal/auth/auth.go b/internal/auth/auth.go
+index 28e880a..51c1c57 100644
+--- a/internal/auth/auth.go
++++ b/internal/auth/auth.go
+@@ -305,6 +305,13 @@ func (ba *BrowserAuth) scanProfilesForDomain(targetDomain string) ([]ProfileInfo
+ 		allProfiles = append(allProfiles, braveProfiles...)
+ 	}
+ 
++	// Check Chromium profiles
++	chromiumPath := getChromiumProfilePath()
++	chromiumProfiles, err := scanBrowserProfiles(chromiumPath, "Chromium", targetDomain)
++	if err == nil {
++		allProfiles = append(allProfiles, chromiumProfiles...)
++	}
++
+ 	// First sort by whether they have target cookies (if a target domain was specified)
+ 	if targetDomain != "" {
+ 		sort.Slice(allProfiles, func(i, j int) bool {
+diff --git a/internal/auth/chrome_darwin.go b/internal/auth/chrome_darwin.go
+index d67ccb3..2217891 100644
+--- a/internal/auth/chrome_darwin.go
++++ b/internal/auth/chrome_darwin.go
+@@ -217,6 +217,11 @@ func getBraveProfilePath() string {
+ 	return filepath.Join(home, "Library", "Application Support", "BraveSoftware", "Brave-Browser")
+ }
+ 
++func getChromiumProfilePath() string {
++	// Chromium profile path not implemented for macOS
++	return ""
++}
++
+ func checkBrowserInstallation() string {
+ 	var messages []string
+ 	var found bool
+diff --git a/internal/auth/chrome_linux.go b/internal/auth/chrome_linux.go
+index a3dff94..07276cc 100644
+--- a/internal/auth/chrome_linux.go
++++ b/internal/auth/chrome_linux.go
+@@ -83,3 +83,8 @@ func getBraveProfilePath() string {
+ 	home, _ := os.UserHomeDir()
+ 	return filepath.Join(home, ".config", "BraveSoftware", "Brave-Browser")
+ }
++
++func getChromiumProfilePath() string {
++	home, _ := os.UserHomeDir()
++	return filepath.Join(home, ".config", "chromium")
++}
+diff --git a/internal/auth/chrome_windows.go b/internal/auth/chrome_windows.go
+index 0e459d2..463da37 100644
+--- a/internal/auth/chrome_windows.go
++++ b/internal/auth/chrome_windows.go
+@@ -67,3 +67,15 @@ func getChromePath() string {
+ 
+ 	return ""
+ }
++
++func getCanaryProfilePath() string {
++	return ""
++}
++
++func getBraveProfilePath() string {
++	return ""
++}
++
++func getChromiumProfilePath() string {
++	return ""
++}

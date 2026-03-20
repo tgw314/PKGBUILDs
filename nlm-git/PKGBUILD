@@ -1,7 +1,7 @@
 # Maintainer: Koki Tagawa <me@k0k1.dev>
 pkgname=nlm-git
 pkgver=r151.297ebc5
-pkgrel=1
+pkgrel=2
 pkgdesc='A command-line interface to NotebookLM'
 arch=('x86_64')
 url='https://github.com/tmc/nlm'
@@ -9,12 +9,19 @@ license=('MIT')
 makedepends=('git' 'go')
 provides=('nlm')
 conflicts=('nlm')
-source=('nlm::git+https://github.com/tmc/nlm.git')
-sha256sums=('SKIP')
+source=('nlm::git+https://github.com/tmc/nlm.git'
+        'chromium.patch')
+sha256sums=('SKIP'
+            '1d06a875d53309e7dbe8b68a6714103c10c28f8363e1c8da39b9bd5f2f0bead3')
 
 pkgver() {
     cd nlm
     printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+prepare() {
+    cd nlm
+    patch -Np1 -i "${srcdir}/chromium.patch"
 }
 
 build() {
