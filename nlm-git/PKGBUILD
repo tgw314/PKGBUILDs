@@ -1,0 +1,34 @@
+# Maintainer: Koki Tagawa <me@k0k1.dev>
+pkgname=nlm-git
+pkgver=r0
+pkgrel=1
+pkgdesc='A command-line interface to NotebookLM'
+arch=('x86_64')
+url='https://github.com/tmc/nlm'
+license=('MIT')
+makedepends=('git' 'go')
+provides=('nlm')
+conflicts=('nlm')
+source=('nlm::git+https://github.com/tmc/nlm.git')
+sha256sums=('SKIP')
+
+pkgver() {
+    cd nlm
+    printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
+}
+
+build() {
+    cd nlm
+    export CGO_CPPFLAGS="${CPPFLAGS}"
+    export CGO_CFLAGS="${CFLAGS}"
+    export CGO_CXXFLAGS="${CXXFLAGS}"
+    export CGO_LDFLAGS="${LDFLAGS}"
+    export GOFLAGS="-buildmode=pie -trimpath -ldflags=-linkmode=external -mod=readonly -modcacherw"
+    go build -o nlm ./cmd/nlm
+}
+
+package() {
+    cd nlm
+    install -Dm755 nlm -t "${pkgdir}/usr/bin"
+    install -Dm644 LICENSE -t "${pkgdir}/usr/share/licenses/${pkgname}"
+}
