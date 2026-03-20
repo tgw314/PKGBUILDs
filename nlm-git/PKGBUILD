@@ -9,19 +9,12 @@ license=('MIT')
 makedepends=('git' 'go')
 provides=('nlm')
 conflicts=('nlm')
-source=('nlm::git+https://github.com/tmc/nlm.git'
-        'vivaldi.patch')
-sha256sums=('SKIP'
-            'c5e06e69d8c50d2759c9176d0a64d6169f62b527d038324a1f07d7700daceffb')
+source=('nlm::git+https://github.com/tmc/nlm.git')
+sha256sums=('SKIP')
 
 pkgver() {
     cd nlm
     printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short HEAD)"
-}
-
-prepare() {
-    cd nlm
-    patch -Np1 -i "${srcdir}/vivaldi.patch"
 }
 
 build() {
