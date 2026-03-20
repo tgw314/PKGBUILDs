@@ -1,0 +1,150 @@
+diff --git a/internal/auth/auth.go b/internal/auth/auth.go
+index 28e880a..c19b2fd 100644
+--- a/internal/auth/auth.go
++++ b/internal/auth/auth.go
+@@ -305,6 +305,13 @@ func (ba *BrowserAuth) scanProfilesForDomain(targetDomain string) ([]ProfileInfo
+ 		allProfiles = append(allProfiles, braveProfiles...)
+ 	}
+ 
++	// Check Vivaldi profiles
++	vivaldiPath := getVivaldiProfilePath()
++	vivaldiProfiles, err := scanBrowserProfiles(vivaldiPath, "Vivaldi", targetDomain)
++	if err == nil {
++		allProfiles = append(allProfiles, vivaldiProfiles...)
++	}
++
+ 	// First sort by whether they have target cookies (if a target domain was specified)
+ 	if targetDomain != "" {
+ 		sort.Slice(allProfiles, func(i, j int) bool {
+diff --git a/internal/auth/chrome_darwin.go b/internal/auth/chrome_darwin.go
+index d67ccb3..0190cac 100644
+--- a/internal/auth/chrome_darwin.go
++++ b/internal/auth/chrome_darwin.go
+@@ -24,6 +24,7 @@ var macOSBrowserPaths = []BrowserPriority{
+ 	{"/Applications/Chromium.app/Contents/MacOS/Chromium", "Chromium", BrowserChrome, ""},
+ 	{"/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge", "Microsoft Edge", BrowserChrome, ""},
+ 	{"/Applications/Brave Browser.app/Contents/MacOS/Brave Browser", "Brave", BrowserChrome, ""},
++	{"/Applications/Vivaldi.app/Contents/MacOS/Vivaldi", "Vivaldi", BrowserChrome, ""},
+ 	{"/Applications/Safari.app/Contents/MacOS/Safari", "Safari", BrowserSafari, ""},
+ }
+ 
+@@ -39,8 +40,9 @@ func getChromePath() string {
+ 
+ 	// Try finding browsers via mdfind
+ 	browserPaths := map[string]string{
+-		"com.google.Chrome": "Contents/MacOS/Google Chrome",
+-		"com.brave.Browser": "Contents/MacOS/Brave Browser",
++		"com.google.Chrome":   "Contents/MacOS/Google Chrome",
++		"com.brave.Browser":   "Contents/MacOS/Brave Browser",
++		"com.vivaldi.Vivaldi": "Contents/MacOS/Vivaldi",
+ 	}
+ 
+ 	for bundleID, execPath := range browserPaths {
+@@ -81,6 +83,18 @@ func getBrowserPathForProfile(browserName string) string {
+ 		if path := findBrowserViaMDFind("com.google.Chrome.canary"); path != "" {
+ 			return filepath.Join(path, "Contents/MacOS/Google Chrome Canary")
+ 		}
++	case "Vivaldi":
++		vivaldiPaths := []string{
++			"/Applications/Vivaldi.app/Contents/MacOS/Vivaldi",
++		}
++		for _, path := range vivaldiPaths {
++			if _, err := os.Stat(path); err == nil {
++				return path
++			}
++		}
++		if path := findBrowserViaMDFind("com.vivaldi.Vivaldi"); path != "" {
++			return filepath.Join(path, "Contents/MacOS/Vivaldi")
++		}
+ 	}
+ 
+ 	// Fallback to any Chrome-based browser
+@@ -114,6 +128,7 @@ func detectChrome(debug bool) Browser {
+ 		"org.chromium.Chromium":    {Name: "Chromium", Type: BrowserChrome},
+ 		"com.microsoft.edgemac":    {Name: "Microsoft Edge", Type: BrowserChrome},
+ 		"com.brave.Browser":        {Name: "Brave", Type: BrowserChrome},
++		"com.vivaldi.Vivaldi":      {Name: "Vivaldi", Type: BrowserChrome},
+ 	}
+ 
+ 	for bundleID, browser := range browserBundles {
+@@ -217,6 +232,11 @@ func getBraveProfilePath() string {
+ 	return filepath.Join(home, "Library", "Application Support", "BraveSoftware", "Brave-Browser")
+ }
+ 
++func getVivaldiProfilePath() string {
++	home, _ := os.UserHomeDir()
++	return filepath.Join(home, "Library", "Application Support", "Vivaldi")
++}
++
+ func checkBrowserInstallation() string {
+ 	var messages []string
+ 	var found bool
+@@ -235,6 +255,7 @@ func checkBrowserInstallation() string {
+ 		messages = append(messages, "- Chromium (https://www.chromium.org/)")
+ 		messages = append(messages, "- Microsoft Edge (https://www.microsoft.com/edge)")
+ 		messages = append(messages, "- Brave Browser (https://brave.com/)")
++		messages = append(messages, "- Vivaldi Browser (https://vivaldi.com/)")
+ 		messages = append(messages, "Or use Safari (pre-installed)")
+ 	}
+ 
+diff --git a/internal/auth/chrome_linux.go b/internal/auth/chrome_linux.go
+index a3dff94..a970d2e 100644
+--- a/internal/auth/chrome_linux.go
++++ b/internal/auth/chrome_linux.go
+@@ -32,6 +32,17 @@ func detectChrome(debug bool) Browser {
+ 		}
+ 	}
+ 
++	// Try Vivaldi
++	if path, err := exec.LookPath("vivaldi"); err == nil {
++		version := getChromeVersion(path)
++		return Browser{
++			Type:    BrowserChrome,
++			Path:    path,
++			Name:    "Vivaldi",
++			Version: version,
++		}
++	}
++
+ 	return Browser{Type: BrowserUnknown}
+ }
+ 
+@@ -69,6 +80,12 @@ func getBrowserPathForProfile(browserName string) string {
+ 		if path, err := exec.LookPath("brave-browser"); err == nil {
+ 			return path
+ 		}
++	case "Vivaldi":
++		for _, name := range []string{"vivaldi-stable", "vivaldi"} {
++			if path, err := exec.LookPath(name); err == nil {
++				return path
++			}
++		}
+ 	}
+ 	// Default to Chrome/Chromium
+ 	return getChromePath()
+@@ -83,3 +100,8 @@ func getBraveProfilePath() string {
+ 	home, _ := os.UserHomeDir()
+ 	return filepath.Join(home, ".config", "BraveSoftware", "Brave-Browser")
+ }
++
++func getVivaldiProfilePath() string {
++	home, _ := os.UserHomeDir()
++	return filepath.Join(home, ".config", "vivaldi")
++}
+diff --git a/internal/auth/chrome_windows.go b/internal/auth/chrome_windows.go
+index 0e459d2..46f758e 100644
+--- a/internal/auth/chrome_windows.go
++++ b/internal/auth/chrome_windows.go
+@@ -67,3 +67,12 @@ func getChromePath() string {
+ 
+ 	return ""
+ }
++
++func getVivaldiProfilePath() string {
++	localAppData := os.Getenv("LOCALAPPDATA")
++	if localAppData == "" {
++		home, _ := os.UserHomeDir()
++		localAppData = filepath.Join(home, "AppData", "Local")
++	}
++	return filepath.Join(localAppData, "Vivaldi", "User Data")
++}
