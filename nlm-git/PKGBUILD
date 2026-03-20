@@ -1,6 +1,6 @@
 # Maintainer: Koki Tagawa <me@k0k1.dev>
 pkgname=nlm-git
-pkgver=r0
+pkgver=r151.297ebc5
 pkgrel=1
 pkgdesc='A command-line interface to NotebookLM'
 arch=('x86_64')
